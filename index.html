@@ -1,0 +1,1234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>NEON PULSE</title>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap");
+
+    :root {
+      --bg: #020203;
+      --primary: #00f3ff;
+      --secondary: #ff0055;
+      --gold: #ffd56b;
+      --glitch1: #ff00ff;
+      --glitch2: #00ff88;
+    }
+
+    * {
+      box-sizing: border-box;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      margin: 0;
+      padding: 0;
+      outline: none;
+    }
+
+    body {
+      background-color: var(--bg);
+      font-family: "Orbitron", sans-serif;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+      color: #fff;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    #ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #input-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+    }
+
+    .score-display {
+      position: absolute;
+      top: max(32px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 4.5rem;
+      font-weight: 900;
+      color: rgba(255, 255, 255, 0.15);
+      letter-spacing: 2px;
+      transition: transform 0.1s, color 0.1s, text-shadow 0.1s;
+      text-align: center;
+    }
+
+    .score-display.active {
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 0 0 20px var(--primary);
+    }
+
+    .score-display.pop {
+      transform: translateX(-50%) scale(1.25);
+      color: #fff;
+    }
+
+    .level-display {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: 16px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(0, 243, 255, 0.18), rgba(255, 0, 120, 0.25));
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 0 18px rgba(0, 243, 255, 0.25);
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+
+    .challenge-chip {
+      position: absolute;
+      bottom: max(18px, env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background:
+        radial-gradient(circle at 0% 0%, rgba(0, 243, 255, 0.25), transparent 60%),
+        radial-gradient(circle at 100% 100%, rgba(255, 0, 120, 0.2), transparent 55%);
+      font-size: 0.7rem;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0.9;
+    }
+
+    .daily-chip {
+      position: absolute;
+      bottom: max(44px, env(safe-area-inset-bottom) + 26px);
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.6);
+      font-size: 0.65rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      pointer-events: none;
+      opacity: 0.9;
+      max-width: 80vw;
+      text-align: center;
+    }
+
+    .combo-banner {
+      position: absolute;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 1.2rem;
+      font-weight: 900;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-shadow: 0 0 16px rgba(255, 213, 107, 0.8);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .combo-banner.visible {
+      opacity: 1;
+      transform: translateX(-50%) scale(1.1);
+    }
+
+    .glitch-label {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--glitch1);
+      text-shadow: 0 0 10px var(--glitch1);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .glitch-label.active {
+      opacity: 1;
+      animation: glitchBlink 0.16s infinite alternate;
+    }
+
+    @keyframes glitchBlink {
+      0% {
+        transform: translateX(-50%) translate(1px, 0);
+        text-shadow: -1px 0 var(--glitch1), 1px 0 var(--glitch2);
+      }
+      100% {
+        transform: translateX(-50%) translate(-1px, 0);
+        text-shadow: 1px 0 var(--glitch1), -1px 0 var(--glitch2);
+      }
+    }
+
+    .screen {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(0, 243, 255, 0.12), transparent 55%),
+        radial-gradient(circle at 90% 100%, rgba(255, 0, 120, 0.18), transparent 55%),
+        rgba(2, 2, 4, 0.82);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.3s ease;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .screen.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    h1 {
+      font-size: 13vw;
+      font-weight: 900;
+      color: #fff;
+      text-align: center;
+      letter-spacing: -1px;
+      margin-bottom: 40px;
+      line-height: 0.9;
+      text-shadow: 0 0 20px var(--primary), 0 0 50px var(--primary);
+    }
+
+    .subtitle {
+      font-size: 0.8rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.6);
+      margin-bottom: 12px;
+    }
+
+    .tagline {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.75);
+      margin-top: 8px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .btn-neon {
+      background: transparent;
+      color: #fff;
+      font-family: "Orbitron", sans-serif;
+      font-size: 1.1rem;
+      font-weight: 800;
+      padding: 18px 70px;
+      border: 2px solid var(--primary);
+      border-radius: 50px;
+      cursor: pointer;
+      pointer-events: auto;
+      box-shadow: 0 0 30px rgba(0, 243, 255, 0.25);
+      transition: all 0.18s ease;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-neon.secondary {
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 22px rgba(255, 255, 255, 0.12);
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .btn-neon::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, rgba(0, 243, 255, 0.18), rgba(255, 0, 120, 0.18));
+      opacity: 0;
+      transition: opacity 0.18s ease;
+    }
+
+    .btn-neon span {
+      position: relative;
+      z-index: 1;
+    }
+
+    .btn-neon:hover::before {
+      opacity: 1;
+    }
+
+    .btn-neon:hover {
+      box-shadow: 0 0 40px rgba(0, 243, 255, 0.6);
+      transform: translateY(-1px);
+    }
+
+    .btn-neon:active {
+      transform: scale(0.96);
+    }
+
+    .tap-hint {
+      position: absolute;
+      bottom: 22%;
+      font-size: 0.9rem;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 3px;
+      animation: pulse 2s infinite;
+      pointer-events: none;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .tap-hint.visible {
+      opacity: 1;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 0.25;
+      }
+      50% {
+        opacity: 0.9;
+      }
+    }
+
+    .stats-box {
+      display: flex;
+      gap: 34px;
+      margin-bottom: 26px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .stat {
+      text-align: center;
+      min-width: 90px;
+    }
+
+    .stat-val {
+      display: block;
+      font-size: 2.4rem;
+      font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px var(--secondary);
+    }
+
+    .stat-lbl {
+      font-size: 0.7rem;
+      color: #aaa;
+      font-weight: 700;
+      letter-spacing: 2px;
+      margin-top: 4px;
+    }
+
+    .share-hint {
+      font-size: 0.65rem;
+      color: rgba(255, 255, 255, 0.65);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-top: 10px;
+      max-width: 260px;
+      text-align: center;
+    }
+
+    .share-code {
+      margin-top: 10px;
+      font-size: 0.75rem;
+      padding: 8px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.45);
+      letter-spacing: 0.12em;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    #copyToast {
+      position: absolute;
+      bottom: 12%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      background: rgba(0, 0, 0, 0.8);
+      color: #fff;
+      letter-spacing: 0.12em;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      text-transform: uppercase;
+    }
+
+    .sound-toggle {
+      position: absolute;
+      top: max(10px, env(safe-area-inset-top));
+      right: 16px;
+      z-index: 30;
+      padding: 6px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      font-family: "Orbitron", sans-serif;
+      font-size: 0.7rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      cursor: pointer;
+      pointer-events: auto;
+    }
+
+    .orb-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .orb-card {
+      width: 90px;
+      padding: 10px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.45);
+      text-align: center;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+      position: relative;
+    }
+
+    .orb-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(circle at 0% 0%, rgba(0, 243, 255, 0.28), transparent 60%);
+      opacity: 0;
+      transition: opacity 0.15s;
+      pointer-events: none;
+    }
+
+    .orb-card:hover::before {
+      opacity: 1;
+    }
+
+    .orb-card.active {
+      border-color: var(--primary);
+      box-shadow: 0 0 20px rgba(0, 243, 255, 0.55);
+      transform: translateY(-2px);
+    }
+
+    .orb-name {
+      font-size: 0.65rem;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-top: 6px;
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .orb-preview {
+      margin: 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 2px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .orb-preview-inner {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 2px solid var(--primary);
+    }
+
+    .orb-tag {
+      font-size: 0.55rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: rgba(255, 255, 255, 0.55);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="input-layer"></div>
+
+  <div id="ui-layer">
+    <button id="soundToggle" class="sound-toggle">SOUND ON</button>
+
+    <div class="level-display" id="levelEl">LEVEL 1 · NEON DRIFT</div>
+    <div class="glitch-label" id="glitchLabel">GLITCH MODE · x2 SCORE</div>
+    <div class="score-display" id="scoreEl">0</div>
+    <div class="combo-banner" id="comboBanner">x3 NEON FLOW</div>
+    <div class="tap-hint" id="tapHint">HOLD TO FLY · RELEASE TO FALL</div>
+    <div class="daily-chip" id="dailyEl">DAILY CHALLENGE: REACH LEVEL 3</div>
+    <div class="challenge-chip" id="challengeEl">CHALLENGE: REACH LEVEL 3</div>
+
+    <!-- Start Screen -->
+    <div id="screen-start" class="screen active">
+      <h1>NEON<br />PULSE</h1>
+      <div class="subtitle">HYPER-REACTOR TUNNEL</div>
+      <div class="tagline">Survive the tunnel. Flex your reflex.</div>
+      <div class="orb-tag">SELECT YOUR ORB</div>
+      <div class="orb-row">
+        <div class="orb-card" data-orb="classic">
+          <div class="orb-preview">
+            <div class="orb-preview-inner" style="border-color:#00f3ff;"></div>
+          </div>
+          <div class="orb-name">CLASSIC</div>
+        </div>
+        <div class="orb-card" data-orb="gold">
+          <div class="orb-preview">
+            <div class="orb-preview-inner" style="border-color:#ffd56b;"></div>
+          </div>
+          <div class="orb-name">GOLD CORE</div>
+        </div>
+        <div class="orb-card" data-orb="void">
+          <div class="orb-preview">
+            <div class="orb-preview-inner" style="border-color:#ff3b3b;"></div>
+          </div>
+          <div class="orb-name">VOID PULSE</div>
+        </div>
+      </div>
+      <div style="height: 18px"></div>
+      <div class="btn-row">
+        <button class="btn-neon" id="btnStart"><span>START RUN</span></button>
+        <button class="btn-neon secondary" id="btnHow"><span>HOW TO PLAY</span></button>
+      </div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="screen-over" class="screen">
+      <h1 style="color: var(--secondary); text-shadow: 0 0 40px var(--secondary)">
+        CRITICAL<br />FAIL
+      </h1>
+      <div class="stats-box">
+        <div class="stat">
+          <span class="stat-lbl">SCORE</span>
+          <span class="stat-val" id="finalScore">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-lbl">BEST</span>
+          <span class="stat-val" id="bestScore">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-lbl">MAX LEVEL</span>
+          <span class="stat-val" id="finalLevel">1</span>
+        </div>
+      </div>
+      <div class="share-code" id="shareText">
+        NEON PULSE · L1 · SCORE 0
+      </div>
+      <div class="share-hint">
+        Copy this and share it with #NeonPulse
+      </div>
+      <div id="copyToast">COPIED</div>
+      <div style="height: 18px"></div>
+      <div class="btn-row">
+        <button class="btn-neon" id="btnRetry"><span>RETRY</span></button>
+      </div>
+    </div>
+
+    <!-- How to Play Screen -->
+    <div id="screen-how" class="screen">
+      <h1 style="font-size: 9vw; margin-bottom: 24px">HOW TO PLAY</h1>
+      <div style="max-width: 420px; text-align: center; font-size: 0.85rem; line-height: 1.5; color: rgba(255, 255, 255, 0.82)">
+        <p>
+          Press and hold to <strong>fly up</strong>. Release to <strong>fall</strong>.
+          Slip through the neon gaps.
+        </p>
+        <p style="margin-top: 10px">
+          Each phase is faster and tighter. Near-misses charge your <strong>NEON FLOW</strong> combo.
+        </p>
+        <p style="margin-top: 10px">
+          <strong>TIP:</strong> Ride the center line, then dive late for maximum near-miss hype.
+        </p>
+      </div>
+      <div style="height: 26px"></div>
+      <div class="btn-row">
+        <button class="btn-neon secondary" id="btnBack"><span>BACK</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    const canvas      = document.getElementById("gameCanvas");
+    const ctx         = canvas.getContext("2d", { alpha: false });
+
+    const startScreen = document.getElementById("screen-start");
+    const overScreen  = document.getElementById("screen-over");
+    const howScreen   = document.getElementById("screen-how");
+
+    const scoreEl      = document.getElementById("scoreEl");
+    const levelEl      = document.getElementById("levelEl");
+    const tapHintEl    = document.getElementById("tapHint");
+    const finalScoreEl = document.getElementById("finalScore");
+    const bestScoreEl  = document.getElementById("bestScore");
+    const finalLevelEl = document.getElementById("finalLevel");
+    const challengeEl  = document.getElementById("challengeEl");
+    const dailyEl      = document.getElementById("dailyEl");
+    const glitchLabel  = document.getElementById("glitchLabel");
+    const comboBanner  = document.getElementById("comboBanner");
+    const shareTextEl  = document.getElementById("shareText");
+    const copyToast    = document.getElementById("copyToast");
+    const soundToggle  = document.getElementById("soundToggle");
+    const inputLayer   = document.getElementById("input-layer");
+
+    const Audio = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (this.ctx) return;
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        this.ctx = new AC();
+      },
+      play(type) {
+        if (!this.ctx || this.muted) return;
+        const t    = this.ctx.currentTime;
+        const osc  = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        if (type === "score") {
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(900, t);
+          gain.gain.setValueAtTime(0.06, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+          osc.start(t);
+          osc.stop(t + 0.15);
+        } else if (type === "crash") {
+          osc.type = "sawtooth";
+          osc.frequency.setValueAtTime(200, t);
+          osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+          gain.gain.setValueAtTime(0.25, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+          osc.start(t);
+          osc.stop(t + 0.3);
+        }
+      }
+    };
+
+    if (soundToggle) {
+      soundToggle.addEventListener("click", (e) => {
+        e.stopPropagation();
+        Audio.init();
+        Audio.muted = !Audio.muted;
+        soundToggle.textContent = Audio.muted ? "SOUND OFF" : "SOUND ON";
+      });
+    }
+
+    const C = {
+      gravity: 1800,
+      thrust: -3200,
+      terminalVel: 900,
+      baseSpeed: 350,
+      maxSpeed: 950,
+      baseGap: 320
+    };
+
+    const phases = [
+      { level: 1, name: "NEON DRIFT" },
+      { level: 2, name: "HYPER PULSE" },
+      { level: 3, name: "QUANTUM VEIL" },
+      { level: 4, name: "SINGULARITY" }
+    ];
+
+    function phaseForScore(score) {
+      if (score >= 45) return phases[3];
+      if (score >= 25) return phases[2];
+      if (score >= 10) return phases[1];
+      return phases[0];
+    }
+
+    let state = {
+      w: 0,
+      h: 0,
+      mode: "MENU",
+      score: 0,
+      best: parseInt(localStorage.getItem("np_best"), 10) || 0,
+      level: 1,
+      phaseName: "NEON DRIFT",
+      time: 0,
+      player: { x: 0, y: 0, r: 0, vy: 0, squash: 1 },
+      obstacles: [],
+      particles: [],
+      currentSpeed: C.baseSpeed,
+      inputActive: false,
+      shake: 0,
+      combo: 0,
+      comboTimer: 0,
+      bestCombo: 0,
+      lastNearMissTime: -1,
+      glitchMode: false
+    };
+
+    function currentGap() {
+      const base = C.baseGap;
+      const levelFactor = 1 - (state.level - 1) * 0.12;
+      const scoreFactor = 1 - Math.min(state.score, 40) * 0.006;
+      return Math.max(base * levelFactor * scoreFactor, 180);
+    }
+
+    function resize() {
+      state.w = window.innerWidth;
+      state.h = window.innerHeight;
+      canvas.width  = state.w;
+      canvas.height = state.h;
+      state.player.r = state.w * 0.035;
+      state.player.x = state.w * 0.2;
+      state.player.y = state.h / 2;
+    }
+
+    window.addEventListener("resize", resize);
+
+    function spawnObstacle() {
+      const w   = state.w * 0.09;
+      const gap = currentGap();
+      const minY = state.h * 0.14;
+      const maxY = state.h * 0.86 - gap;
+      const topH = Math.random() * (maxY - minY) + minY;
+      const moving = state.level >= 2 && Math.random() < 0.35;
+      state.obstacles.push({
+        x: state.w + 80,
+        w,
+        topH,
+        baseTop: topH,
+        gap,
+        hue: (state.time * 30) % 360,
+        passed: false,
+        moving,
+        oscAmp: moving ? gap * 0.22 : 0,
+        oscSpeed: moving ? 1.2 + Math.random() * 0.8 : 0,
+        oscTime: Math.random() * Math.PI * 2,
+        nearMissUsed: false
+      });
+    }
+
+    function randomChallenge() {
+      const arr = [
+        "CHALLENGE: REACH LEVEL 3",
+        "CHALLENGE: SCORE 25+",
+        "CHALLENGE: SURVIVE 40 SECONDS",
+        "CHALLENGE: GET 3 NEAR MISSES"
+      ];
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function dailyChallenge() {
+      const key = new Date().toISOString().slice(0, 10);
+      const stored = localStorage.getItem("np_daily");
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          if (parsed.date === key) return parsed.text;
+        } catch {}
+      }
+      const list = [
+        "DAILY: REACH LEVEL 4",
+        "DAILY: HIT SCORE 50",
+        "DAILY: GET COMBO x4",
+        "DAILY: PLAY 3 RUNS"
+      ];
+      const text = list[Math.floor(Math.random() * list.length)];
+      localStorage.setItem("np_daily", JSON.stringify({ date: key, text }));
+      return text;
+    }
+
+    function resetGame() {
+      state.player.r = state.w * 0.035;
+      state.player.x = state.w * 0.2;
+      state.player.y = state.h / 2;
+      state.player.vy = 0;
+      state.player.squash = 1;
+
+      state.obstacles = [];
+      state.particles = [];
+      state.score = 0;
+      state.time = 0;
+      state.currentSpeed = C.baseSpeed;
+      state.inputActive = false;
+      state.mode = "READY";
+      state.shake = 0;
+      state.combo = 0;
+      state.comboTimer = 0;
+      state.bestCombo = 0;
+      state.glitchMode = false;
+
+      const p = phaseForScore(0);
+      state.level = p.level;
+      state.phaseName = p.name;
+      levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
+
+      scoreEl.textContent = "0";
+      scoreEl.classList.remove("active", "pop");
+      glitchLabel.classList.remove("active");
+      comboBanner.classList.remove("visible");
+
+      challengeEl.textContent = randomChallenge();
+      dailyEl.textContent = dailyChallenge();
+
+      startScreen.classList.remove("active");
+      overScreen.classList.remove("active");
+      howScreen.classList.remove("active");
+      tapHintEl.classList.add("visible");
+    }
+
+    function triggerNearMiss() {
+      state.shake = Math.max(state.shake, 11);
+      state.lastNearMissTime = state.time;
+      state.combo += 1;
+      state.comboTimer = 1.1;
+      state.bestCombo = Math.max(state.bestCombo, state.combo);
+      comboBanner.textContent = `x${state.combo} NEON FLOW`;
+      comboBanner.classList.add("visible");
+    }
+
+    function explode(x, y, color) {
+      for (let i = 0; i < 40; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 120 + Math.random() * 260;
+        state.particles.push({
+          x,
+          y,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s,
+          life: 1,
+          size: 1 + Math.random() * 3,
+          color: color || "#fff"
+        });
+      }
+    }
+
+    function gameOver() {
+      if (state.mode === "OVER") return;
+      state.mode = "OVER";
+      Audio.play("crash");
+      explode(state.player.x, state.player.y, "#ff0055");
+      state.shake = 24;
+
+      if (state.score > state.best) {
+        state.best = state.score;
+        localStorage.setItem("np_best", state.best.toString());
+      }
+
+      finalScoreEl.textContent = state.score.toString();
+      bestScoreEl.textContent = state.best.toString();
+      finalLevelEl.textContent = state.level.toString();
+
+      shareTextEl.textContent = `NEON PULSE ⚡ L${state.level} ${state.phaseName} · SCORE ${state.score} · BEST COMBO x${state.bestCombo}`;
+
+      overScreen.classList.add("active");
+      scoreEl.classList.remove("active");
+      comboBanner.classList.remove("visible");
+    }
+
+    function updateDifficulty() {
+      const p = phaseForScore(state.score);
+      const oldLevel = state.level;
+      state.level = p.level;
+      state.phaseName = p.name;
+      levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
+
+      const progress = Math.min(state.score / 60, 1);
+      const targetSpeed = C.baseSpeed + progress * (C.maxSpeed - C.baseSpeed) + (p.level - 1) * 40;
+      state.currentSpeed = Math.min(state.currentSpeed, targetSpeed);
+
+      if (state.level !== oldLevel && state.mode === "PLAY") {
+        comboBanner.textContent = `LEVEL ${p.level} · ${p.name}`;
+        comboBanner.classList.add("visible");
+        setTimeout(() => comboBanner.classList.remove("visible"), 600);
+      }
+    }
+
+    function update(dt) {
+      state.time += dt;
+
+      if (state.mode === "READY") {
+        state.player.y = state.h / 2 + Math.sin(state.time * 4) * 15;
+        if (state.inputActive) {
+          state.mode = "PLAY";
+          state.player.vy = -320;
+          tapHintEl.classList.remove("visible");
+          scoreEl.classList.add("active");
+          challengeEl.textContent = randomChallenge();
+          spawnObstacle();
+          if (Math.random() < 0.05) {
+            state.glitchMode = true;
+            glitchLabel.classList.add("active");
+          } else {
+            state.glitchMode = false;
+            glitchLabel.classList.remove("active");
+          }
+        }
+        return;
+      }
+
+      if (state.mode !== "PLAY") return;
+
+      state.currentSpeed = Math.min(state.currentSpeed + dt * 30, C.maxSpeed);
+
+      if (state.inputActive) {
+        state.player.vy += C.thrust * dt;
+      } else {
+        state.player.vy += C.gravity * dt;
+      }
+
+      state.player.vy = Math.max(-C.terminalVel, Math.min(C.terminalVel, state.player.vy));
+      state.player.y += state.player.vy * dt;
+
+      const speedRatio = Math.abs(state.player.vy) / C.terminalVel;
+      const targetSquash = 1 + speedRatio * 0.15;
+      state.player.squash += (targetSquash - state.player.squash) * 0.25;
+
+      if (state.player.y < state.player.r) {
+        state.player.y = state.player.r;
+        state.player.vy = 0;
+      }
+      if (state.player.y > state.h - state.player.r) {
+        state.player.y = state.h - state.player.r;
+        gameOver();
+      }
+
+      const last = state.obstacles[state.obstacles.length - 1];
+      const spawnDist = state.w * (0.6 + (state.currentSpeed / C.maxSpeed) * 0.35);
+      if (!last || state.w - last.x > spawnDist) {
+        spawnObstacle();
+      }
+
+      const p = state.player;
+      for (let i = state.obstacles.length - 1; i >= 0; i--) {
+        const o = state.obstacles[i];
+        o.x -= state.currentSpeed * dt;
+        if (o.moving) {
+          o.oscTime += o.oscSpeed * dt;
+          o.topH = o.baseTop + Math.sin(o.oscTime) * o.oscAmp;
+        }
+        o.hue = (o.hue + dt * 50) % 360;
+
+        const hitX = p.x + p.r * 0.72 > o.x && p.x - p.r * 0.72 < o.x + o.w;
+        if (hitX) {
+          const topEdge = o.topH;
+          const bottomEdge = o.topH + o.gap;
+          const hitTop = p.y - p.r * 0.72 < topEdge;
+          const hitBot = p.y + p.r * 0.72 > bottomEdge;
+          if (hitTop || hitBot) {
+            gameOver();
+          } else {
+            const distTop = Math.abs(p.y - p.r * 0.86 - topEdge);
+            const distBot = Math.abs(p.y + p.r * 0.86 - bottomEdge);
+            const minDist = Math.min(distTop, distBot);
+            if (!o.nearMissUsed && minDist < p.r * 0.4) {
+              o.nearMissUsed = true;
+              triggerNearMiss();
+            }
+          }
+        }
+
+        if (!o.passed && o.x + o.w < p.x) {
+          o.passed = true;
+          state.score += 1;
+          scoreEl.textContent = state.score.toString();
+          scoreEl.classList.remove("pop");
+          void scoreEl.offsetWidth;
+          scoreEl.classList.add("pop");
+          Audio.play("score");
+          updateDifficulty();
+        }
+
+        if (o.x + o.w < 0) {
+          state.obstacles.splice(i, 1);
+        }
+      }
+
+      for (let i = state.particles.length - 1; i >= 0; i--) {
+        const pt = state.particles[i];
+        pt.x += pt.vx * dt;
+        pt.y += pt.vy * dt;
+        pt.life -= dt * 2;
+        if (pt.life <= 0) state.particles.splice(i, 1);
+      }
+
+      if (state.combo > 0) {
+        state.comboTimer -= dt;
+        if (state.comboTimer <= 0) {
+          state.combo = 0;
+          comboBanner.classList.remove("visible");
+        }
+      }
+    }
+
+    function draw() {
+      ctx.save();
+
+      if (state.shake > 0) {
+        const dx = (Math.random() - 0.5) * state.shake;
+        const dy = (Math.random() - 0.5) * state.shake;
+        ctx.translate(dx, dy);
+        state.shake *= 0.88;
+        if (state.shake < 0.4) state.shake = 0;
+      }
+
+      const bg = ctx.createLinearGradient(0, 0, 0, state.h);
+      bg.addColorStop(0, "#020205");
+      bg.addColorStop(1, "#000000");
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, state.w, state.h);
+
+      ctx.save();
+      ctx.strokeStyle = state.glitchMode ? "rgba(255, 0, 255, 0.3)" : "rgba(0, 243, 255, 0.22)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+
+      const gridSpeed = state.mode === "PLAY" ? state.currentSpeed : 50;
+      const gridOffset = (state.time * gridSpeed * 0.5) % 100;
+      const horizon = state.h * 0.52;
+      const cx = state.w / 2;
+
+      for (let i = -14; i <= 14; i++) {
+        const x1 = cx + i * 40;
+        const x2 = cx + i * 360;
+        ctx.moveTo(x1, horizon);
+        ctx.lineTo(x2, state.h);
+        ctx.moveTo(x1, horizon);
+        ctx.lineTo(x2, 0);
+      }
+
+      for (let i = 0; i < 12; i++) {
+        const z = (i * 110 + gridOffset) % 1100;
+        const p = z / 1100;
+        const yBot = horizon + p * p * (state.h * 0.55);
+        const yTop = horizon - p * p * (state.h * 0.55);
+        if (yBot < state.h) {
+          ctx.moveTo(0, yBot);
+          ctx.lineTo(state.w, yBot);
+        }
+        if (yTop > 0) {
+          ctx.moveTo(0, yTop);
+          ctx.lineTo(state.w, yTop);
+        }
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      state.obstacles.forEach((o) => {
+        const color = state.glitchMode
+          ? `hsl(${(o.hue + 120) % 360}, 100%, 60%)`
+          : `hsl(${o.hue}, 100%, 60%)`;
+
+        ctx.save();
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = color;
+        ctx.fillStyle = color;
+        ctx.fillRect(o.x, 0, o.w, o.topH);
+        ctx.fillRect(o.x, o.topH + o.gap, o.w, state.h - (o.topH + o.gap));
+
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#fff";
+        ctx.strokeRect(o.x, 0, o.w, o.topH);
+        ctx.strokeRect(o.x, o.topH + o.gap, o.w, state.h - (o.topH + o.gap));
+
+        if (o.moving) {
+          ctx.setLineDash([10, 6]);
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.beginPath();
+          ctx.moveTo(o.x, o.topH + o.gap / 2);
+          ctx.lineTo(o.x + o.w, o.topH + o.gap / 2);
+          ctx.stroke();
+        }
+
+        ctx.restore();
+      });
+
+      if (state.mode !== "OVER") {
+        const p = state.player;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(1 / p.squash, p.squash);
+
+        let orbColor = "#00f3ff";
+        if (state.glitchMode) orbColor = "#ff00ff";
+
+        ctx.shadowBlur = 30;
+        ctx.shadowColor = orbColor;
+
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.rotate(state.time * 3);
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = orbColor;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.r * 0.8, p.r * 0.3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.r * 0.3, p.r * 0.8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 0.22, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+
+      state.particles.forEach((pt) => {
+        ctx.globalAlpha = pt.life;
+        ctx.fillStyle = pt.color || "#fff";
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size || 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+
+      if (state.lastNearMissTime > 0 && state.time - state.lastNearMissTime < 0.35) {
+        const t = state.time - state.lastNearMissTime;
+        const alpha = Math.max(0, 0.8 - t * 2.2);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = "#00f3ff";
+        ctx.textAlign = "center";
+        ctx.font = `${state.w * 0.05}px Orbitron, sans-serif`;
+        ctx.fillText("NEAR MISS!", state.w / 2, state.h * 0.2);
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+
+    function handlePress(e) {
+      if (e && e.cancelable) e.preventDefault();
+      Audio.init();
+
+      if (state.mode === "MENU") {
+        startScreen.classList.remove("active");
+        resetGame();
+        return;
+      }
+      if (state.mode === "OVER") {
+        resetGame();
+        return;
+      }
+      state.inputActive = true;
+    }
+
+    function handleRelease(e) {
+      if (e && e.cancelable) e.preventDefault();
+      state.inputActive = false;
+    }
+
+    inputLayer.addEventListener("touchstart", handlePress, { passive: false });
+    inputLayer.addEventListener("touchend", handleRelease, { passive: false });
+    inputLayer.addEventListener("mousedown", handlePress);
+    inputLayer.addEventListener("mouseup", handleRelease);
+    inputLayer.addEventListener("mouseleave", handleRelease);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        handlePress(e);
+      }
+      if (e.code === "Enter" && state.mode === "OVER") {
+        handlePress(e);
+      }
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.code === "Space") handleRelease(e);
+    });
+
+    function bindButton(id, handler) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        Audio.init();
+        handler();
+      });
+      el.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        Audio.init();
+        handler();
+      }, { passive: false });
+    }
+
+    bindButton("btnStart", () => resetGame());
+    bindButton("btnRetry", () => resetGame());
+    bindButton("btnHow", () => howScreen.classList.add("active"));
+    bindButton("btnBack", () => howScreen.classList.remove("active"));
+
+    if (shareTextEl) {
+      shareTextEl.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(shareTextEl.textContent || "");
+          if (copyToast) {
+            copyToast.style.opacity = "1";
+            setTimeout(() => {
+              copyToast.style.opacity = "0";
+            }, 800);
+          }
+        } catch {}
+      });
+    }
+
+    resize();
+    let lastTime = performance.now();
+    function loop(now) {
+      const dt = Math.min((now - lastTime) / 1000, 0.1);
+      lastTime = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  })();
+  </script>
