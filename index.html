@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0,
+                 user-scalable=no, viewport-fit=cover" />
   <title>NEON PULSE</title>
   <style>
     @import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap");
@@ -99,7 +101,11 @@
       letter-spacing: 2px;
       padding: 6px 14px;
       border-radius: 999px;
-      background: linear-gradient(90deg, rgba(0, 243, 255, 0.18), rgba(255, 0, 120, 0.25));
+      background: linear-gradient(
+        90deg,
+        rgba(0, 243, 255, 0.18),
+        rgba(255, 0, 120, 0.25)
+      );
       border: 1px solid rgba(255, 255, 255, 0.12);
       box-shadow: 0 0 18px rgba(0, 243, 255, 0.25);
       pointer-events: none;
@@ -225,7 +231,9 @@
       letter-spacing: -1px;
       margin-bottom: 40px;
       line-height: 0.9;
-      text-shadow: 0 0 20px var(--primary), 0 0 50px var(--primary);
+      text-shadow:
+        0 0 20px var(--primary),
+        0 0 50px var(--primary);
     }
 
     .subtitle {
@@ -281,7 +289,11 @@
       content: "";
       position: absolute;
       inset: 0;
-      background: linear-gradient(120deg, rgba(0, 243, 255, 0.18), rgba(255, 0, 120, 0.18));
+      background: linear-gradient(
+        120deg,
+        rgba(0, 243, 255, 0.18),
+        rgba(255, 0, 120, 0.18)
+      );
       opacity: 0;
       transition: opacity 0.18s ease;
     }
@@ -587,6 +599,9 @@
         <p style="margin-top: 10px">
           <strong>TIP:</strong> Ride the center line, then dive late for maximum near-miss hype.
         </p>
+        <p style="margin-top: 10px">
+          On mobile, you can also <strong>drag the orb</strong> up and down with your finger if you want more control.
+        </p>
       </div>
       <div style="height: 26px"></div>
       <div class="btn-row">
@@ -596,639 +611,867 @@
   </div>
 
   <script>
-  (function () {
-    const canvas      = document.getElementById("gameCanvas");
-    const ctx         = canvas.getContext("2d", { alpha: false });
+    (function () {
+      const startScreen  = document.getElementById("screen-start");
+      const overScreen   = document.getElementById("screen-over");
+      const howScreen    = document.getElementById("screen-how");
+      const scoreEl      = document.getElementById("scoreEl");
+      const tapHintEl    = document.getElementById("tapHint");
+      const levelEl      = document.getElementById("levelEl");
+      const challengeEl  = document.getElementById("challengeEl");
+      const dailyEl      = document.getElementById("dailyEl");
+      const comboBanner  = document.getElementById("comboBanner");
+      const glitchLabel  = document.getElementById("glitchLabel");
+      const finalScoreEl = document.getElementById("finalScore");
+      const bestScoreEl  = document.getElementById("bestScore");
+      const finalLevelEl = document.getElementById("finalLevel");
+      const shareTextEl  = document.getElementById("shareText");
+      const copyToast    = document.getElementById("copyToast");
+      const soundToggle  = document.getElementById("soundToggle");
 
-    const startScreen = document.getElementById("screen-start");
-    const overScreen  = document.getElementById("screen-over");
-    const howScreen   = document.getElementById("screen-how");
+      const orbCards     = document.querySelectorAll(".orb-card");
+      let currentOrb     = localStorage.getItem("np_orb") || "classic";
 
-    const scoreEl      = document.getElementById("scoreEl");
-    const levelEl      = document.getElementById("levelEl");
-    const tapHintEl    = document.getElementById("tapHint");
-    const finalScoreEl = document.getElementById("finalScore");
-    const bestScoreEl  = document.getElementById("bestScore");
-    const finalLevelEl = document.getElementById("finalLevel");
-    const challengeEl  = document.getElementById("challengeEl");
-    const dailyEl      = document.getElementById("dailyEl");
-    const glitchLabel  = document.getElementById("glitchLabel");
-    const comboBanner  = document.getElementById("comboBanner");
-    const shareTextEl  = document.getElementById("shareText");
-    const copyToast    = document.getElementById("copyToast");
-    const soundToggle  = document.getElementById("soundToggle");
-    const inputLayer   = document.getElementById("input-layer");
-
-    const Audio = {
-      ctx: null,
-      muted: false,
-      init() {
-        if (this.ctx) return;
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        this.ctx = new AC();
-      },
-      play(type) {
-        if (!this.ctx || this.muted) return;
-        const t    = this.ctx.currentTime;
-        const osc  = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        if (type === "score") {
-          osc.type = "sine";
-          osc.frequency.setValueAtTime(900, t);
-          gain.gain.setValueAtTime(0.06, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-          osc.start(t);
-          osc.stop(t + 0.15);
-        } else if (type === "crash") {
-          osc.type = "sawtooth";
-          osc.frequency.setValueAtTime(200, t);
-          osc.frequency.exponentialRampToValueAtTime(40, t + 0.3);
-          gain.gain.setValueAtTime(0.25, t);
-          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-          osc.start(t);
-          osc.stop(t + 0.3);
+      orbCards.forEach(card => {
+        if (card.dataset.orb === currentOrb) {
+          card.classList.add("active");
         }
-      }
-    };
-
-    if (soundToggle) {
-      soundToggle.addEventListener("click", (e) => {
-        e.stopPropagation();
-        Audio.init();
-        Audio.muted = !Audio.muted;
-        soundToggle.textContent = Audio.muted ? "SOUND OFF" : "SOUND ON";
+        card.addEventListener("click", (e) => {
+          e.stopPropagation();
+          orbCards.forEach(c => c.classList.remove("active"));
+          card.classList.add("active");
+          currentOrb = card.dataset.orb;
+          localStorage.setItem("np_orb", currentOrb);
+        });
       });
-    }
 
-    const C = {
-      gravity: 1800,
-      thrust: -3200,
-      terminalVel: 900,
-      baseSpeed: 350,
-      maxSpeed: 950,
-      baseGap: 320
-    };
-
-    const phases = [
-      { level: 1, name: "NEON DRIFT" },
-      { level: 2, name: "HYPER PULSE" },
-      { level: 3, name: "QUANTUM VEIL" },
-      { level: 4, name: "SINGULARITY" }
-    ];
-
-    function phaseForScore(score) {
-      if (score >= 45) return phases[3];
-      if (score >= 25) return phases[2];
-      if (score >= 10) return phases[1];
-      return phases[0];
-    }
-
-    let state = {
-      w: 0,
-      h: 0,
-      mode: "MENU",
-      score: 0,
-      best: parseInt(localStorage.getItem("np_best"), 10) || 0,
-      level: 1,
-      phaseName: "NEON DRIFT",
-      time: 0,
-      player: { x: 0, y: 0, r: 0, vy: 0, squash: 1 },
-      obstacles: [],
-      particles: [],
-      currentSpeed: C.baseSpeed,
-      inputActive: false,
-      shake: 0,
-      combo: 0,
-      comboTimer: 0,
-      bestCombo: 0,
-      lastNearMissTime: -1,
-      glitchMode: false
-    };
-
-    function currentGap() {
-      const base = C.baseGap;
-      const levelFactor = 1 - (state.level - 1) * 0.12;
-      const scoreFactor = 1 - Math.min(state.score, 40) * 0.006;
-      return Math.max(base * levelFactor * scoreFactor, 180);
-    }
-
-    function resize() {
-      state.w = window.innerWidth;
-      state.h = window.innerHeight;
-      canvas.width  = state.w;
-      canvas.height = state.h;
-      state.player.r = state.w * 0.035;
-      state.player.x = state.w * 0.2;
-      state.player.y = state.h / 2;
-    }
-
-    window.addEventListener("resize", resize);
-
-    function spawnObstacle() {
-      const w   = state.w * 0.09;
-      const gap = currentGap();
-      const minY = state.h * 0.14;
-      const maxY = state.h * 0.86 - gap;
-      const topH = Math.random() * (maxY - minY) + minY;
-      const moving = state.level >= 2 && Math.random() < 0.35;
-      state.obstacles.push({
-        x: state.w + 80,
-        w,
-        topH,
-        baseTop: topH,
-        gap,
-        hue: (state.time * 30) % 360,
-        passed: false,
-        moving,
-        oscAmp: moving ? gap * 0.22 : 0,
-        oscSpeed: moving ? 1.2 + Math.random() * 0.8 : 0,
-        oscTime: Math.random() * Math.PI * 2,
-        nearMissUsed: false
-      });
-    }
-
-    function randomChallenge() {
-      const arr = [
+      const randomChallenges = [
         "CHALLENGE: REACH LEVEL 3",
         "CHALLENGE: SCORE 25+",
+        "CHALLENGE: GET 3 NEAR MISSES IN ONE RUN",
         "CHALLENGE: SURVIVE 40 SECONDS",
-        "CHALLENGE: GET 3 NEAR MISSES"
       ];
-      return arr[Math.floor(Math.random() * arr.length)];
-    }
 
-    function dailyChallenge() {
-      const key = new Date().toISOString().slice(0, 10);
-      const stored = localStorage.getItem("np_daily");
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          if (parsed.date === key) return parsed.text;
-        } catch {}
-      }
-      const list = [
+      const dailyChallenges = [
         "DAILY: REACH LEVEL 4",
         "DAILY: HIT SCORE 50",
         "DAILY: GET COMBO x4",
-        "DAILY: PLAY 3 RUNS"
+        "DAILY: PLAY 3 RUNS",
+        "DAILY: SURVIVE 60 SECONDS",
       ];
-      const text = list[Math.floor(Math.random() * list.length)];
-      localStorage.setItem("np_daily", JSON.stringify({ date: key, text }));
-      return text;
-    }
 
-    function resetGame() {
-      state.player.r = state.w * 0.035;
-      state.player.x = state.w * 0.2;
-      state.player.y = state.h / 2;
-      state.player.vy = 0;
-      state.player.squash = 1;
-
-      state.obstacles = [];
-      state.particles = [];
-      state.score = 0;
-      state.time = 0;
-      state.currentSpeed = C.baseSpeed;
-      state.inputActive = false;
-      state.mode = "READY";
-      state.shake = 0;
-      state.combo = 0;
-      state.comboTimer = 0;
-      state.bestCombo = 0;
-      state.glitchMode = false;
-
-      const p = phaseForScore(0);
-      state.level = p.level;
-      state.phaseName = p.name;
-      levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
-
-      scoreEl.textContent = "0";
-      scoreEl.classList.remove("active", "pop");
-      glitchLabel.classList.remove("active");
-      comboBanner.classList.remove("visible");
-
-      challengeEl.textContent = randomChallenge();
-      dailyEl.textContent = dailyChallenge();
-
-      startScreen.classList.remove("active");
-      overScreen.classList.remove("active");
-      howScreen.classList.remove("active");
-      tapHintEl.classList.add("visible");
-    }
-
-    function triggerNearMiss() {
-      state.shake = Math.max(state.shake, 11);
-      state.lastNearMissTime = state.time;
-      state.combo += 1;
-      state.comboTimer = 1.1;
-      state.bestCombo = Math.max(state.bestCombo, state.combo);
-      comboBanner.textContent = `x${state.combo} NEON FLOW`;
-      comboBanner.classList.add("visible");
-    }
-
-    function explode(x, y, color) {
-      for (let i = 0; i < 40; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const s = 120 + Math.random() * 260;
-        state.particles.push({
-          x,
-          y,
-          vx: Math.cos(a) * s,
-          vy: Math.sin(a) * s,
-          life: 1,
-          size: 1 + Math.random() * 3,
-          color: color || "#fff"
-        });
-      }
-    }
-
-    function gameOver() {
-      if (state.mode === "OVER") return;
-      state.mode = "OVER";
-      Audio.play("crash");
-      explode(state.player.x, state.player.y, "#ff0055");
-      state.shake = 24;
-
-      if (state.score > state.best) {
-        state.best = state.score;
-        localStorage.setItem("np_best", state.best.toString());
+      function pickRandomChallenge() {
+        return randomChallenges[Math.floor(Math.random() * randomChallenges.length)];
       }
 
-      finalScoreEl.textContent = state.score.toString();
-      bestScoreEl.textContent = state.best.toString();
-      finalLevelEl.textContent = state.level.toString();
-
-      shareTextEl.textContent = `NEON PULSE ⚡ L${state.level} ${state.phaseName} · SCORE ${state.score} · BEST COMBO x${state.bestCombo}`;
-
-      overScreen.classList.add("active");
-      scoreEl.classList.remove("active");
-      comboBanner.classList.remove("visible");
-    }
-
-    function updateDifficulty() {
-      const p = phaseForScore(state.score);
-      const oldLevel = state.level;
-      state.level = p.level;
-      state.phaseName = p.name;
-      levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
-
-      const progress = Math.min(state.score / 60, 1);
-      const targetSpeed = C.baseSpeed + progress * (C.maxSpeed - C.baseSpeed) + (p.level - 1) * 40;
-      state.currentSpeed = Math.min(state.currentSpeed, targetSpeed);
-
-      if (state.level !== oldLevel && state.mode === "PLAY") {
-        comboBanner.textContent = `LEVEL ${p.level} · ${p.name}`;
-        comboBanner.classList.add("visible");
-        setTimeout(() => comboBanner.classList.remove("visible"), 600);
+      function getDailyChallenge() {
+        const todayKey = new Date().toISOString().slice(0, 10);
+        const stored   = localStorage.getItem("np_daily");
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            if (parsed.date === todayKey) return parsed.text;
+          } catch (e) {}
+        }
+        const text = dailyChallenges[Math.floor(Math.random() * dailyChallenges.length)];
+        localStorage.setItem("np_daily", JSON.stringify({ date: todayKey, text }));
+        return text;
       }
-    }
 
-    function update(dt) {
-      state.time += dt;
+      const phases = [
+        { level: 1, name: "NEON DRIFT",   color: "#00f3ff" },
+        { level: 2, name: "HYPER PULSE",  color: "#ff6bff" },
+        { level: 3, name: "QUANTUM VEIL", color: "#ffd56b" },
+        { level: 4, name: "SINGULARITY",  color: "#ff3b3b" },
+      ];
 
-      if (state.mode === "READY") {
-        state.player.y = state.h / 2 + Math.sin(state.time * 4) * 15;
-        if (state.inputActive) {
-          state.mode = "PLAY";
-          state.player.vy = -320;
-          tapHintEl.classList.remove("visible");
-          scoreEl.classList.add("active");
-          challengeEl.textContent = randomChallenge();
-          spawnObstacle();
-          if (Math.random() < 0.05) {
-            state.glitchMode = true;
-            glitchLabel.classList.add("active");
-          } else {
-            state.glitchMode = false;
-            glitchLabel.classList.remove("active");
+      function getPhaseForScore(score) {
+        if (score >= 45) return phases[3];
+        if (score >= 25) return phases[2];
+        if (score >= 10) return phases[1];
+        return phases[0];
+      }
+
+      const C = {
+        gravity:     1800,
+        thrust:      -3000,
+        terminalVel: 900,
+
+        baseSpeed: 360,
+        maxSpeed:  980,
+        baseGap:   320,
+
+        colors: {
+          bgTop:  "#020205",
+          bgBot:  "#000000",
+          player: "#ffffff",
+          neon:   "#00f3ff",
+        },
+      };
+
+      const Audio = {
+        ctx: null,
+        muted: false,
+        init() {
+          if (!this.ctx) {
+            const AC = window.AudioContext || window.webkitAudioContext;
+            if (AC) this.ctx = new AC();
           }
+          if (this.ctx && this.ctx.state === "suspended") {
+            this.ctx.resume().catch(() => {});
+          }
+        },
+        beep(freq, duration, gainVal) {
+          if (!this.ctx || this.muted) return;
+          const t    = this.ctx.currentTime;
+          const osc  = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, t);
+          gain.gain.setValueAtTime(gainVal, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
+          osc.start(t);
+          osc.stop(t + duration);
+        },
+        play(type) {
+          if (!this.ctx || this.muted) return;
+          const t    = this.ctx.currentTime;
+          const osc  = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          if (type === "score") {
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, t);
+            gain.gain.setValueAtTime(0.06, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+            osc.start(t);
+            osc.stop(t + 0.16);
+          } else if (type === "crash") {
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(120, t);
+            osc.frequency.exponentialRampToValueAtTime(12, t + 0.45);
+            gain.gain.setValueAtTime(0.25, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+            osc.start(t);
+            osc.stop(t + 0.45);
+          } else if (type === "near") {
+            osc.type = "square";
+            osc.frequency.setValueAtTime(1200, t);
+            gain.gain.setValueAtTime(0.04, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+            osc.start(t);
+            osc.stop(t + 0.12);
+          } else if (type === "phase") {
+            this.beep(520, 0.1, 0.05);
+            this.beep(760, 0.12, 0.05);
+          }
+        },
+      };
+
+      const canvas = document.getElementById("gameCanvas");
+      const ctx    = canvas.getContext("2d", { alpha: false });
+
+      let state = {
+        w: 0,
+        h: 0,
+        mode: "MENU",
+        score: 0,
+        highScore: parseInt(localStorage.getItem("np_best")) || 0,
+        player: { x: 0, y: 0, vy: 0, r: 0, squash: 1 },
+        obstacles: [],
+        particles: [],
+        inputActive: false,
+        dragging: false,
+        dragOffsetY: 0,
+        time: 0,
+        hue: 0,
+        currentSpeed: C.baseSpeed,
+        baseScroll: 0,
+        shake: 0,
+        lastNearMissTime: -1,
+        combo: 0,
+        comboTimer: 0,
+        bestCombo: 0,
+        level: 1,
+        phaseName: "NEON DRIFT",
+        glitchMode: false,
+        glitchFactor: 0,
+      };
+
+      function updateDifficultyFromScore() {
+        const p = getPhaseForScore(state.score);
+        const prevLevel = state.level;
+        state.level     = p.level;
+        state.phaseName = p.name;
+        levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
+
+        const progressFactor = Math.min(state.score / 60, 1);
+        const targetSpeed =
+          C.baseSpeed +
+          progressFactor * (C.maxSpeed - C.baseSpeed) +
+          (p.level - 1) * 40;
+
+        state.currentSpeed = Math.min(state.currentSpeed, targetSpeed);
+
+        if (state.level !== prevLevel && state.mode === "PLAY") {
+          comboBanner.textContent = `LEVEL ${p.level} · ${p.name}`;
+          comboBanner.classList.add("visible");
+          setTimeout(() => comboBanner.classList.remove("visible"), 550);
+          Audio.play("phase");
         }
-        return;
       }
 
-      if (state.mode !== "PLAY") return;
-
-      state.currentSpeed = Math.min(state.currentSpeed + dt * 30, C.maxSpeed);
-
-      if (state.inputActive) {
-        state.player.vy += C.thrust * dt;
-      } else {
-        state.player.vy += C.gravity * dt;
+      function currentGapSize() {
+        const base        = C.baseGap;
+        const levelFactor = 1 - (state.level - 1) * 0.12;
+        const scoreFactor = 1 - Math.min(state.score, 40) * 0.006;
+        return Math.max(base * levelFactor * scoreFactor, 180);
       }
 
-      state.player.vy = Math.max(-C.terminalVel, Math.min(C.terminalVel, state.player.vy));
-      state.player.y += state.player.vy * dt;
+      function updatePhysics(dt) {
+        state.time += dt;
+        state.hue   = (state.time * 15) % 360;
 
-      const speedRatio = Math.abs(state.player.vy) / C.terminalVel;
-      const targetSquash = 1 + speedRatio * 0.15;
-      state.player.squash += (targetSquash - state.player.squash) * 0.25;
+        if (state.mode === "READY") {
+          // Idle float before first tap
+          state.player.y = state.h / 2 + Math.sin(state.time * 4) * 15;
+          if (state.inputActive || state.dragging) {
+            state.mode      = "PLAY";
+            state.player.vy = -320;
+            tapHintEl.classList.remove("visible");
+            scoreEl.classList.add("active");
+            challengeEl.textContent = pickRandomChallenge();
+            spawnObstacle();
 
-      if (state.player.y < state.player.r) {
-        state.player.y = state.player.r;
-        state.player.vy = 0;
-      }
-      if (state.player.y > state.h - state.player.r) {
-        state.player.y = state.h - state.player.r;
-        gameOver();
-      }
-
-      const last = state.obstacles[state.obstacles.length - 1];
-      const spawnDist = state.w * (0.6 + (state.currentSpeed / C.maxSpeed) * 0.35);
-      if (!last || state.w - last.x > spawnDist) {
-        spawnObstacle();
-      }
-
-      const p = state.player;
-      for (let i = state.obstacles.length - 1; i >= 0; i--) {
-        const o = state.obstacles[i];
-        o.x -= state.currentSpeed * dt;
-        if (o.moving) {
-          o.oscTime += o.oscSpeed * dt;
-          o.topH = o.baseTop + Math.sin(o.oscTime) * o.oscAmp;
-        }
-        o.hue = (o.hue + dt * 50) % 360;
-
-        const hitX = p.x + p.r * 0.72 > o.x && p.x - p.r * 0.72 < o.x + o.w;
-        if (hitX) {
-          const topEdge = o.topH;
-          const bottomEdge = o.topH + o.gap;
-          const hitTop = p.y - p.r * 0.72 < topEdge;
-          const hitBot = p.y + p.r * 0.72 > bottomEdge;
-          if (hitTop || hitBot) {
-            gameOver();
-          } else {
-            const distTop = Math.abs(p.y - p.r * 0.86 - topEdge);
-            const distBot = Math.abs(p.y + p.r * 0.86 - bottomEdge);
-            const minDist = Math.min(distTop, distBot);
-            if (!o.nearMissUsed && minDist < p.r * 0.4) {
-              o.nearMissUsed = true;
-              triggerNearMiss();
+            if (Math.random() < 0.05) {
+              state.glitchMode   = true;
+              state.glitchFactor = 1;
+              glitchLabel.classList.add("active");
+            } else {
+              state.glitchMode   = false;
+              state.glitchFactor = 0;
+              glitchLabel.classList.remove("active");
             }
           }
+          return;
         }
 
-        if (!o.passed && o.x + o.w < p.x) {
-          o.passed = true;
-          state.score += 1;
-          scoreEl.textContent = state.score.toString();
-          scoreEl.classList.remove("pop");
-          void scoreEl.offsetWidth;
-          scoreEl.classList.add("pop");
-          Audio.play("score");
-          updateDifficulty();
+        if (state.mode !== "PLAY") return;
+
+        state.currentSpeed = Math.min(
+          state.currentSpeed + dt * 30,
+          C.maxSpeed
+        );
+
+        if (!state.dragging) {
+          if (state.inputActive) {
+            state.player.vy += C.thrust * dt;
+          } else {
+            state.player.vy += C.gravity * dt;
+          }
+
+          if (state.player.vy >  C.terminalVel) state.player.vy =  C.terminalVel;
+          if (state.player.vy < -C.terminalVel) state.player.vy = -C.terminalVel;
+
+          state.player.y += state.player.vy * dt;
+        } else {
+          // During drag we already set y directly in move handler
+          state.player.vy = 0;
         }
 
-        if (o.x + o.w < 0) {
-          state.obstacles.splice(i, 1);
+        const speedRatio    = Math.abs(state.player.vy) / C.terminalVel;
+        const targetSquash  = 1 + speedRatio * 0.15;
+        state.player.squash += (targetSquash - state.player.squash) * 0.24;
+
+        if (state.player.y < state.player.r) {
+          state.player.y  = state.player.r;
+          state.player.vy = 0;
+        }
+        if (state.player.y > state.h - state.player.r) {
+          gameOver();
+        }
+
+        const lastObs   = state.obstacles[state.obstacles.length - 1];
+        const spawnDist = state.w *
+          (0.6 + (state.currentSpeed / C.maxSpeed) * 0.35);
+
+        if (!lastObs || state.w - lastObs.x > spawnDist) {
+          spawnObstacle();
+        }
+
+        const player = state.player;
+
+        for (let i = state.obstacles.length - 1; i >= 0; i--) {
+          const o = state.obstacles[i];
+
+          const moveAmt = state.currentSpeed * dt;
+          o.x -= moveAmt;
+
+          if (o.moving) {
+            o.oscTime += dt * o.oscSpeed;
+            o.topH     = o.baseTop + Math.sin(o.oscTime) * o.oscAmp;
+          }
+
+          o.hue = (o.hue + dt * 50) % 360;
+
+          const hitX =
+            player.x + player.r * 0.72 > o.x &&
+            player.x - player.r * 0.72 < o.x + o.w;
+
+          if (hitX) {
+            const topEdge    = o.topH;
+            const bottomEdge = o.topH + o.gap;
+
+            const hitTop =
+              player.y - player.r * 0.72 < topEdge;
+            const hitBot =
+              player.y + player.r * 0.72 > bottomEdge;
+
+            if (hitTop || hitBot) {
+              gameOver();
+            } else {
+              const distToTopEdge =
+                Math.abs(player.y - player.r * 0.86 - topEdge);
+              const distToBottomEdge =
+                Math.abs(player.y + player.r * 0.86 - bottomEdge);
+              const minDist = Math.min(
+                distToTopEdge,
+                distToBottomEdge
+              );
+
+              if (!o.nearMissUsed && minDist < player.r * 0.4) {
+                o.nearMissUsed = true;
+                triggerNearMiss();
+              }
+            }
+          }
+
+          if (!o.passed && o.x + o.w < player.x) {
+            o.passed = true;
+            const scoreGain = state.glitchMode ? 2 : 1;
+            state.score += scoreGain;
+            scoreEl.textContent = state.score;
+            scoreEl.classList.remove("pop");
+            void scoreEl.offsetWidth;
+            scoreEl.classList.add("pop");
+            Audio.play("score");
+            updateDifficultyFromScore();
+          }
+
+          if (o.x + o.w < 0) {
+            state.obstacles.splice(i, 1);
+          }
+        }
+
+        for (let i = state.particles.length - 1; i >= 0; i--) {
+          const p = state.particles[i];
+          p.x    += p.vx * dt;
+          p.y    += p.vy * dt;
+          p.life -= dt * 2;
+          if (p.life <= 0) state.particles.splice(i, 1);
+        }
+
+        if (state.combo > 0) {
+          state.comboTimer -= dt;
+          if (state.comboTimer <= 0) {
+            state.combo = 0;
+            comboBanner.classList.remove("visible");
+          }
+        }
+
+        if (state.glitchMode) {
+          state.glitchFactor = Math.max(0.3, state.glitchFactor * 0.995);
+        } else {
+          state.glitchFactor = 0;
         }
       }
 
-      for (let i = state.particles.length - 1; i >= 0; i--) {
-        const pt = state.particles[i];
-        pt.x += pt.vx * dt;
-        pt.y += pt.vy * dt;
-        pt.life -= dt * 2;
-        if (pt.life <= 0) state.particles.splice(i, 1);
-      }
+      function resetGame() {
+        state.player.r = state.w * 0.035;
+        state.player.x = state.w * 0.2;
+        state.player.y = state.h / 2;
+        state.player.vy = 0;
+        state.player.squash = 1;
 
-      if (state.combo > 0) {
-        state.comboTimer -= dt;
-        if (state.comboTimer <= 0) {
-          state.combo = 0;
-          comboBanner.classList.remove("visible");
-        }
-      }
-    }
+        state.obstacles = [];
+        state.particles = [];
+        state.score     = 0;
+        state.time      = 0;
+        state.currentSpeed = C.baseSpeed;
+        state.inputActive  = false;
+        state.dragging     = false;
+        state.shake        = 0;
+        state.lastNearMissTime = -1;
+        state.combo        = 0;
+        state.comboTimer   = 0;
+        state.bestCombo    = 0;
+        state.glitchMode   = false;
+        state.glitchFactor = 0;
 
-    function draw() {
-      ctx.save();
+        scoreEl.textContent = "0";
+        scoreEl.classList.remove("active");
+        scoreEl.classList.remove("pop");
 
-      if (state.shake > 0) {
-        const dx = (Math.random() - 0.5) * state.shake;
-        const dy = (Math.random() - 0.5) * state.shake;
-        ctx.translate(dx, dy);
-        state.shake *= 0.88;
-        if (state.shake < 0.4) state.shake = 0;
-      }
+        glitchLabel.classList.remove("active");
 
-      const bg = ctx.createLinearGradient(0, 0, 0, state.h);
-      bg.addColorStop(0, "#020205");
-      bg.addColorStop(1, "#000000");
-      ctx.fillStyle = bg;
-      ctx.fillRect(0, 0, state.w, state.h);
-
-      ctx.save();
-      ctx.strokeStyle = state.glitchMode ? "rgba(255, 0, 255, 0.3)" : "rgba(0, 243, 255, 0.22)";
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-
-      const gridSpeed = state.mode === "PLAY" ? state.currentSpeed : 50;
-      const gridOffset = (state.time * gridSpeed * 0.5) % 100;
-      const horizon = state.h * 0.52;
-      const cx = state.w / 2;
-
-      for (let i = -14; i <= 14; i++) {
-        const x1 = cx + i * 40;
-        const x2 = cx + i * 360;
-        ctx.moveTo(x1, horizon);
-        ctx.lineTo(x2, state.h);
-        ctx.moveTo(x1, horizon);
-        ctx.lineTo(x2, 0);
-      }
-
-      for (let i = 0; i < 12; i++) {
-        const z = (i * 110 + gridOffset) % 1100;
-        const p = z / 1100;
-        const yBot = horizon + p * p * (state.h * 0.55);
-        const yTop = horizon - p * p * (state.h * 0.55);
-        if (yBot < state.h) {
-          ctx.moveTo(0, yBot);
-          ctx.lineTo(state.w, yBot);
-        }
-        if (yTop > 0) {
-          ctx.moveTo(0, yTop);
-          ctx.lineTo(state.w, yTop);
-        }
-      }
-      ctx.stroke();
-      ctx.restore();
-
-      state.obstacles.forEach((o) => {
-        const color = state.glitchMode
-          ? `hsl(${(o.hue + 120) % 360}, 100%, 60%)`
-          : `hsl(${o.hue}, 100%, 60%)`;
-
-        ctx.save();
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = color;
-        ctx.fillStyle = color;
-        ctx.fillRect(o.x, 0, o.w, o.topH);
-        ctx.fillRect(o.x, o.topH + o.gap, o.w, state.h - (o.topH + o.gap));
-
-        ctx.shadowBlur = 0;
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "#fff";
-        ctx.strokeRect(o.x, 0, o.w, o.topH);
-        ctx.strokeRect(o.x, o.topH + o.gap, o.w, state.h - (o.topH + o.gap));
-
-        if (o.moving) {
-          ctx.setLineDash([10, 6]);
-          ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
-          ctx.beginPath();
-          ctx.moveTo(o.x, o.topH + o.gap / 2);
-          ctx.lineTo(o.x + o.w, o.topH + o.gap / 2);
-          ctx.stroke();
-        }
-
-        ctx.restore();
-      });
-
-      if (state.mode !== "OVER") {
-        const p = state.player;
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.scale(1 / p.squash, p.squash);
-
-        let orbColor = "#00f3ff";
-        if (state.glitchMode) orbColor = "#ff00ff";
-
-        ctx.shadowBlur = 30;
-        ctx.shadowColor = orbColor;
-
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.r, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.rotate(state.time * 3);
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = orbColor;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.r * 0.8, p.r * 0.3, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.r * 0.3, p.r * 0.8, 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.fillStyle = "#fff";
-        ctx.beginPath();
-        ctx.arc(0, 0, p.r * 0.22, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.restore();
-      }
-
-      state.particles.forEach((pt) => {
-        ctx.globalAlpha = pt.life;
-        ctx.fillStyle = pt.color || "#fff";
-        ctx.beginPath();
-        ctx.arc(pt.x, pt.y, pt.size || 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.globalAlpha = 1;
-      });
-
-      if (state.lastNearMissTime > 0 && state.time - state.lastNearMissTime < 0.35) {
-        const t = state.time - state.lastNearMissTime;
-        const alpha = Math.max(0, 0.8 - t * 2.2);
-        ctx.save();
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = "#00f3ff";
-        ctx.textAlign = "center";
-        ctx.font = `${state.w * 0.05}px Orbitron, sans-serif`;
-        ctx.fillText("NEAR MISS!", state.w / 2, state.h * 0.2);
-        ctx.restore();
-      }
-
-      ctx.restore();
-    }
-
-    function handlePress(e) {
-      if (e && e.cancelable) e.preventDefault();
-      Audio.init();
-
-      if (state.mode === "MENU") {
         startScreen.classList.remove("active");
-        resetGame();
-        return;
+        overScreen.classList.remove("active");
+        howScreen.classList.remove("active");
+        tapHintEl.classList.add("visible");
+
+        const p = getPhaseForScore(0);
+        state.level     = p.level;
+        state.phaseName = p.name;
+        levelEl.textContent = `LEVEL ${p.level} · ${p.name}`;
+
+        challengeEl.textContent = pickRandomChallenge();
+        dailyEl.textContent     = getDailyChallenge();
+
+        state.mode = "READY";
       }
-      if (state.mode === "OVER") {
-        resetGame();
-        return;
+
+      function spawnObstacle() {
+        const w    = state.w * 0.085;
+        const gap  = currentGapSize();
+        const minY = state.h * 0.14;
+        const maxY = state.h * 0.86 - gap;
+        const topH = Math.random() * (maxY - minY) + minY;
+
+        const hue = (state.time * 22) % 360;
+
+        const movingChance = state.level >= 2 ? 0.4 : 0.0;
+        const moving  = Math.random() < movingChance;
+        const oscAmp  = moving ? gap * 0.22 : 0;
+        const oscSpeed = moving ? 1.2 + Math.random() * 0.8 : 0;
+
+        state.obstacles.push({
+          x: state.w + 100,
+          w,
+          topH,
+          baseTop: topH,
+          gap,
+          passed: false,
+          hue,
+          nearMissUsed: false,
+          moving,
+          oscAmp,
+          oscSpeed,
+          oscTime: Math.random() * Math.PI * 2,
+        });
       }
-      state.inputActive = true;
-    }
 
-    function handleRelease(e) {
-      if (e && e.cancelable) e.preventDefault();
-      state.inputActive = false;
-    }
-
-    inputLayer.addEventListener("touchstart", handlePress, { passive: false });
-    inputLayer.addEventListener("touchend", handleRelease, { passive: false });
-    inputLayer.addEventListener("mousedown", handlePress);
-    inputLayer.addEventListener("mouseup", handleRelease);
-    inputLayer.addEventListener("mouseleave", handleRelease);
-
-    window.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        handlePress(e);
+      function createExplosion(x, y, color) {
+        for (let i = 0; i < 46; i++) {
+          const angle = Math.random() * Math.PI * 2;
+          const speed = Math.random() * 320 + 120;
+          state.particles.push({
+            x,
+            y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            life: 1,
+            size: Math.random() * 4 + 1,
+            color: color || "#fff",
+          });
+        }
       }
-      if (e.code === "Enter" && state.mode === "OVER") {
-        handlePress(e);
+
+      function triggerNearMiss() {
+        state.shake = Math.max(state.shake, 11);
+        state.lastNearMissTime = state.time;
+        state.combo      += 1;
+        state.comboTimer  = 1.1;
+        if (state.combo > state.bestCombo) state.bestCombo = state.combo;
+
+        comboBanner.textContent = `x${state.combo} NEON FLOW`;
+        comboBanner.classList.add("visible");
+        Audio.play("near");
+
+        const extraParticles = 9;
+        for (let i = 0; i < extraParticles; i++) {
+          state.particles.push({
+            x: state.player.x,
+            y: state.player.y,
+            vx: (Math.random() - 0.5) * 220,
+            vy: (Math.random() - 0.5) * 220,
+            life: 0.8,
+            size: Math.random() * 2 + 1,
+            color: "#00f3ff",
+          });
+        }
       }
-    });
 
-    window.addEventListener("keyup", (e) => {
-      if (e.code === "Space") handleRelease(e);
-    });
+      function gameOver() {
+        if (state.mode === "OVER") return;
+        state.mode = "OVER";
+        state.inputActive = false;
+        state.dragging    = false;
 
-    function bindButton(id, handler) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
+        Audio.play("crash");
+        createExplosion(state.player.x, state.player.y, "#ff0055");
+        state.shake = 26;
+
+        if (state.score > state.highScore) {
+          state.highScore = state.score;
+          localStorage.setItem("np_best", state.highScore);
+        }
+
+        finalScoreEl.textContent = state.score;
+        bestScoreEl.textContent  = state.highScore;
+        finalLevelEl.textContent = state.level;
+
+        shareTextEl.textContent =
+          `NEON PULSE ⚡ L${state.level} ${state.phaseName} · SCORE ${state.score} · BEST COMBO x${state.bestCombo} · GLITCH ${state.glitchMode ? "ON" : "OFF"}`;
+
+        overScreen.classList.add("active");
+        scoreEl.classList.remove("active");
+        comboBanner.classList.remove("visible");
+      }
+
+      function draw() {
+        ctx.save();
+
+        if (state.shake > 0) {
+          const dx = (Math.random() - 0.5) * state.shake;
+          const dy = (Math.random() - 0.5) * state.shake;
+          ctx.translate(dx, dy);
+          state.shake *= 0.88;
+          if (state.shake < 0.45) state.shake = 0;
+        }
+
+        if (state.glitchFactor > 0) {
+          const shift = state.glitchFactor * 2;
+          ctx.fillStyle = "#000";
+          ctx.fillRect(0, 0, state.w, state.h);
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          ctx.translate(shift, 0);
+        }
+
+        const grad = ctx.createLinearGradient(0, 0, 0, state.h);
+        grad.addColorStop(0, C.colors.bgTop);
+        grad.addColorStop(1, C.colors.bgBot);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, state.w, state.h);
+
+        ctx.save();
+        ctx.strokeStyle = state.glitchMode ? "rgba(255, 0, 255, 0.3)" : "rgba(0, 243, 255, 0.22)";
+        ctx.lineWidth   = 1.5;
+        ctx.beginPath();
+
+        const gridSpeed  = state.mode === "PLAY" ? state.currentSpeed : 50;
+        const gridOffset = (state.time * gridSpeed * 0.5) % 100;
+        const horizon    = state.h * 0.52;
+        const bottom     = state.h;
+        const cx         = state.w / 2;
+
+        for (let i = -14; i <= 14; i++) {
+          const x1 = cx + i * 40;
+          const x2 = cx + i * 360;
+          ctx.moveTo(x1, horizon);
+          ctx.lineTo(x2, bottom);
+          ctx.moveTo(x1, horizon);
+          ctx.lineTo(x2, 0);
+        }
+
+        for (let i = 0; i < 12; i++) {
+          const z = (i * 110 + gridOffset) % 1100;
+          const p = z / 1100;
+          const yBot = horizon + p * p * (state.h * 0.55);
+          const yTop = horizon - p * p * (state.h * 0.55);
+
+          if (yBot < state.h) {
+            ctx.moveTo(0, yBot);
+            ctx.lineTo(state.w, yBot);
+          }
+          if (yTop > 0) {
+            ctx.moveTo(0, yTop);
+            ctx.lineTo(state.w, yTop);
+          }
+        }
+        ctx.stroke();
+        ctx.restore();
+
+        state.obstacles.forEach((o) => {
+          const color = state.glitchMode
+            ? `hsl(${(o.hue + 120) % 360}, 100%, 60%)`
+            : `hsl(${o.hue}, 100%, 60%)`;
+
+          ctx.save();
+          ctx.shadowBlur  = 20;
+          ctx.shadowColor = color;
+          ctx.fillStyle   = color;
+
+          ctx.fillRect(o.x, 0, o.w, o.topH);
+          ctx.fillRect(o.x, o.topH + o.gap, o.w, state.h);
+
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth   = 2;
+          ctx.shadowBlur  = 0;
+          ctx.strokeRect(o.x, 0, o.w, o.topH);
+          ctx.strokeRect(
+            o.x,
+            o.topH + o.gap,
+            o.w,
+            state.h - (o.topH + o.gap)
+          );
+
+          if (o.moving) {
+            ctx.setLineDash([10, 6]);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+            ctx.beginPath();
+            ctx.moveTo(o.x, o.topH + o.gap / 2);
+            ctx.lineTo(o.x + o.w, o.topH + o.gap / 2);
+            ctx.stroke();
+          }
+
+          ctx.restore();
+        });
+
+        if (state.mode !== "OVER") {
+          const p = state.player;
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.scale(1 / p.squash, p.squash);
+
+          let orbColor = "#00f3ff";
+          if (currentOrb === "gold") orbColor = "#ffd56b";
+          if (currentOrb === "void") orbColor = "#ff3b3b";
+          if (state.glitchMode) orbColor = "#ff00ff";
+
+          ctx.shadowBlur  = 30;
+          ctx.shadowColor = orbColor;
+
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth   = 3;
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.rotate(state.time * 3);
+          ctx.lineWidth   = 2;
+          ctx.strokeStyle = orbColor;
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.r * 0.8, p.r * 0.3, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.r * 0.3, p.r * 0.8, 0, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = "#fff";
+          ctx.beginPath();
+          ctx.arc(0, 0, p.r * 0.22, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.restore();
+        }
+
+        state.particles.forEach((p) => {
+          ctx.globalAlpha = p.life;
+          ctx.fillStyle   = p.color || "#fff";
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.size || 2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.globalAlpha = 1;
+
+        if (state.lastNearMissTime > 0 &&
+            state.time - state.lastNearMissTime < 0.35) {
+          const t     = state.time - state.lastNearMissTime;
+          const alpha = Math.max(0, 0.8 - t * 2.2);
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle   = "#00f3ff";
+          ctx.textAlign   = "center";
+          ctx.font        = `${state.w * 0.05}px Orbitron, sans-serif`;
+          ctx.fillText("NEAR MISS!", state.w / 2, state.h * 0.2);
+          ctx.restore();
+        }
+
+        if (state.glitchFactor > 0) {
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+
+      const inputLayer = document.getElementById("input-layer");
+
+      function pointerYFromEvent(e) {
+        if (e.touches && e.touches.length > 0) {
+          return e.touches[0].clientY;
+        }
+        if (e.changedTouches && e.changedTouches.length > 0) {
+          return e.changedTouches[0].clientY;
+        }
+        return e.clientY;
+      }
+
+      function handleStart(e) {
+        if (e.cancelable) e.preventDefault();
         Audio.init();
-        handler();
+
+        const y = pointerYFromEvent(e);
+
+        // If game over: restart
+        if (state.mode === "OVER") {
+          resetGame();
+          return;
+        }
+
+        // If still at menu: go into READY first
+        if (state.mode === "MENU") {
+          startScreen.classList.remove("active");
+          resetGame();
+        }
+
+        // Check if touch is on orb -> drag mode
+        const p = state.player;
+        const distToOrb = Math.abs(y - p.y);
+        if (distToOrb < p.r * 1.6) {
+          state.dragging    = true;
+          state.dragOffsetY = p.y - y;
+        } else {
+          state.inputActive = true;
+        }
+      }
+
+      function handleMove(e) {
+        if (!state.dragging) return;
+        if (e.cancelable) e.preventDefault();
+
+        const y = pointerYFromEvent(e);
+        let newY = y + state.dragOffsetY;
+
+        const minY = state.player.r;
+        const maxY = state.h - state.player.r;
+        if (newY < minY) newY = minY;
+        if (newY > maxY) newY = maxY;
+
+        state.player.y = newY;
+      }
+
+      function handleEnd(e) {
+        if (e.cancelable) e.preventDefault();
+        if (state.dragging) {
+          state.dragging = false;
+        } else {
+          state.inputActive = false;
+        }
+      }
+
+      inputLayer.addEventListener("touchstart", handleStart, { passive: false });
+      inputLayer.addEventListener("touchmove",  handleMove,  { passive: false });
+      inputLayer.addEventListener("touchend",   handleEnd,   { passive: false });
+      inputLayer.addEventListener("touchcancel",handleEnd,   { passive: false });
+
+      inputLayer.addEventListener("mousedown", handleStart);
+      inputLayer.addEventListener("mousemove", handleMove);
+      inputLayer.addEventListener("mouseup",   handleEnd);
+      inputLayer.addEventListener("mouseleave",handleEnd);
+
+      window.addEventListener("keydown", (e) => {
+        if (e.code === "Space") {
+          Audio.init();
+          if (state.mode === "OVER") {
+            resetGame();
+          } else if (state.mode === "MENU") {
+            startScreen.classList.remove("active");
+            resetGame();
+          } else {
+            state.inputActive = true;
+          }
+        }
+
+        if (e.code === "Enter" && state.mode === "OVER") {
+          Audio.init();
+          resetGame();
+        }
       });
-      el.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        Audio.init();
-        handler();
-      }, { passive: false });
-    }
 
-    bindButton("btnStart", () => resetGame());
-    bindButton("btnRetry", () => resetGame());
-    bindButton("btnHow", () => howScreen.classList.add("active"));
-    bindButton("btnBack", () => howScreen.classList.remove("active"));
+      window.addEventListener("keyup", (e) => {
+        if (e.code === "Space") state.inputActive = false;
+      });
 
-    if (shareTextEl) {
+      function bindBtn(id, action) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const trigger = (e) => {
+          e.stopPropagation();
+          Audio.init();
+          action();
+        };
+        el.addEventListener("click", trigger);
+        el.addEventListener(
+          "touchstart",
+          (e) => {
+            e.preventDefault();
+            trigger(e);
+          },
+          { passive: false }
+        );
+      }
+
+      bindBtn("btnStart", () => { resetGame(); });
+      bindBtn("btnRetry", () => { resetGame(); });
+      bindBtn("btnHow",   () => { howScreen.classList.add("active"); });
+      bindBtn("btnBack",  () => { howScreen.classList.remove("active"); });
+
       shareTextEl.addEventListener("click", async () => {
         try {
-          await navigator.clipboard.writeText(shareTextEl.textContent || "");
+          await navigator.clipboard.writeText(shareTextEl.textContent);
           if (copyToast) {
             copyToast.style.opacity = "1";
             setTimeout(() => {
               copyToast.style.opacity = "0";
             }, 800);
           }
-        } catch {}
+        } catch (e) {
+          console.error("Copy failed", e);
+        }
       });
-    }
 
-    resize();
-    let lastTime = performance.now();
-    function loop(now) {
-      const dt = Math.min((now - lastTime) / 1000, 0.1);
-      lastTime = now;
-      update(dt);
-      draw();
+      if (soundToggle) {
+        soundToggle.addEventListener("click", (e) => {
+          e.stopPropagation();
+          Audio.init();
+          Audio.muted = !Audio.muted;
+          soundToggle.textContent = Audio.muted ? "SOUND OFF" : "SOUND ON";
+        });
+      }
+
+      function resize() {
+        state.w = window.innerWidth;
+        state.h = window.innerHeight;
+        canvas.width  = state.w;
+        canvas.height = state.h;
+        state.player.x = state.w * 0.2;
+        state.player.y = state.h / 2;
+        state.player.r = state.w * 0.035;
+      }
+
+      window.addEventListener("resize", resize);
+
+      let lastTime = 0;
+      function loop(timestamp) {
+        const dt = Math.min((timestamp - lastTime) / 1000, 0.1);
+        lastTime = timestamp;
+
+        updatePhysics(dt);
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      resize();
+      dailyEl.textContent = getDailyChallenge();
       requestAnimationFrame(loop);
-    }
-    requestAnimationFrame(loop);
-  })();
+    })();
   </script>
+</body>
+</html>
